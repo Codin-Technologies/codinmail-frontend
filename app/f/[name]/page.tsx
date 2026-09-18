@@ -1,5 +1,5 @@
-import { ThreadHeader, ThreadList } from '@/app/components/thread-list';
-import { getThreadsForFolder } from '@/lib/db/queries';
+import { ApplicationShell } from '@/app/components/application-shell';
+import Loading from '@/app/loading';
 import { Suspense } from 'react';
 
 export function generateStaticParams() {
@@ -23,20 +23,16 @@ export default function ThreadsPage({
   searchParams: Promise<{ q?: string; id?: string }>;
 }) {
   return (
-    <div className="flex h-screen">
-      <Suspense fallback={<ThreadsSkeleton folderName="" />}>
+    <div className="flex h-screen w-full">
+      <Suspense fallback={<ThreadsSkeleton />}>
         <Threads params={params} searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-function ThreadsSkeleton({ folderName }: { folderName: string }) {
-  return (
-    <div className="grow overflow-hidden border-r border-gray-200">
-      <ThreadHeader folderName={folderName} />
-    </div>
-  );
+function ThreadsSkeleton() {
+  return <Loading />;
 }
 
 async function Threads({
@@ -48,7 +44,14 @@ async function Threads({
 }) {
   let { name } = await params;
   let { q } = await searchParams;
-  let threads = await getThreadsForFolder(name);
+  let threads: any[] = [];
+  let dataUnavailable = false;
+  try {
+    const { getThreadsForFolder } = await import('@/lib/db/queries');
+    threads = await getThreadsForFolder(name);
+  } catch {
+    dataUnavailable = true;
+  }
 
-  return <ThreadList folderName={name} threads={threads} searchQuery={q} />;
+  return <ApplicationShell folderName={name} threads={threads} searchQuery={q} dataUnavailable={dataUnavailable} />;
 }

@@ -13,8 +13,54 @@ const sendEmailSchema = z.object({
   recipientEmail: z.string().email('Invalid email address'),
 });
 
+const createContactSchema = z.object({
+  firstName: z.string().trim().min(1, 'First name is required'),
+  lastName: z.string().trim().min(1, 'Last name is required'),
+  email: z.string().trim().email('Enter a valid email address'),
+  company: z.string().trim().optional(),
+  jobTitle: z.string().trim().optional(),
+  phone: z.string().trim().optional(),
+  notes: z.string().trim().optional(),
+});
+
+export async function createContactAction(_: any, formData: FormData) {
+  const rawFormData = {
+    firstName: formData.get('firstName')?.toString() ?? '',
+    lastName: formData.get('lastName')?.toString() ?? '',
+    email: formData.get('email')?.toString() ?? '',
+    company: formData.get('company')?.toString() ?? '',
+    jobTitle: formData.get('jobTitle')?.toString() ?? '',
+    phone: formData.get('phone')?.toString() ?? '',
+    notes: formData.get('notes')?.toString() ?? '',
+  };
+
+  if (process.env.VERCEL_ENV === 'production') {
+    return { error: 'Contact creation is only available locally for now.', previous: rawFormData };
+  }
+
+  try {
+    const contact = createContactSchema.parse(rawFormData);
+    await db.insert(users).values({
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      email: contact.email,
+      company: contact.company || null,
+      jobTitle: contact.jobTitle || null,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { error: error.errors[0].message, previous: rawFormData };
+    }
+    return { error: 'Could not create contact. The email may already exist.', previous: rawFormData };
+  }
+
+  revalidatePath('/contacts');
+  redirect('/contacts');
+}
+
 export async function sendEmailAction(_: any, formData: FormData) {
   let newThread;
+  let returnTo = formData.get('returnTo');
   let rawFormData = {
     subject: formData.get('subject'),
     body: formData.get('body'),
@@ -87,7 +133,10 @@ export async function sendEmailAction(_: any, formData: FormData) {
   }
 
   revalidatePath('/', 'layout');
-  redirect(`/f/sent/${newThread.id}`);
+  let destination = typeof returnTo === 'string' && ['inbox', 'starred', 'drafts', 'sent', 'archive', 'trash'].includes(returnTo)
+    ? returnTo
+    : 'inbox';
+  redirect(`/f/${destination}`);
 }
 
 export async function moveThreadToDone(_: any, formData: FormData) {

@@ -1,0 +1,277 @@
+import {
+  CodinFile,
+  CodinFolder,
+  CURRENT_FILES_USER,
+  FileActivity,
+  FilePermission,
+  FileRelation,
+  FileVersion,
+  FileWorkspace,
+  FilesStore,
+} from './types';
+
+const now = '2026-08-24T10:32:00.000Z';
+const yesterday = '2026-08-23T15:10:00.000Z';
+const weekAgo = '2026-08-20T09:00:00.000Z';
+const older = '2026-08-12T11:20:00.000Z';
+
+export const FILE_WORKSPACES: FileWorkspace[] = [
+  { id: 'ws-personal', name: 'Personal', kind: 'personal', memberCount: 1, description: 'Files only you own.' },
+  { id: 'ws-org', name: 'Organization', kind: 'organization', memberCount: 48, description: 'Codin company files.' },
+  { id: 'ws-sales', name: 'Sales', kind: 'team', memberCount: 8, description: 'Team folder for Sales.' },
+  { id: 'ws-ops', name: 'Operations', kind: 'team', memberCount: 8, description: 'SOPs, reports, and templates.' },
+  { id: 'ws-finance', name: 'Finance', kind: 'team', memberCount: 5, description: 'Budgets and invoices.' },
+  { id: 'ws-hr', name: 'HR', kind: 'team', memberCount: 4, description: 'People operations documents.' },
+  { id: 'ws-abc', name: 'ABC Logistics', kind: 'project', memberCount: 6, description: 'Client proposal workspace.' },
+  { id: 'ws-fleet', name: 'Fleet500', kind: 'project', memberCount: 5, description: 'Fleet product files.' },
+  { id: 'ws-site', name: 'Codin Website', kind: 'project', memberCount: 4, description: 'Marketing site assets.' },
+];
+
+export const INITIAL_FOLDERS: CodinFolder[] = [
+  { id: 'fld-projects', name: 'Projects', parentId: null, ownerId: CURRENT_FILES_USER.id, workspaceId: 'ws-personal', isStarred: true, createdAt: weekAgo, updatedAt: now },
+  { id: 'fld-finance', name: 'Finance', parentId: null, ownerId: CURRENT_FILES_USER.id, workspaceId: 'ws-personal', isStarred: false, createdAt: weekAgo, updatedAt: yesterday },
+  { id: 'fld-hr', name: 'HR', parentId: null, ownerId: CURRENT_FILES_USER.id, workspaceId: 'ws-personal', isStarred: false, createdAt: weekAgo, updatedAt: weekAgo },
+  { id: 'fld-marketing', name: 'Marketing', parentId: null, ownerId: CURRENT_FILES_USER.id, workspaceId: 'ws-personal', isStarred: false, createdAt: weekAgo, updatedAt: yesterday },
+  { id: 'fld-sales', name: 'Sales', parentId: null, ownerId: CURRENT_FILES_USER.id, workspaceId: 'ws-personal', isStarred: true, createdAt: weekAgo, updatedAt: now },
+  { id: 'fld-clients', name: 'Clients', parentId: 'fld-sales', ownerId: CURRENT_FILES_USER.id, workspaceId: 'ws-personal', isStarred: false, createdAt: weekAgo, updatedAt: now },
+  { id: 'fld-abc', name: 'ABC Logistics', parentId: 'fld-clients', ownerId: CURRENT_FILES_USER.id, workspaceId: 'ws-abc', isStarred: true, createdAt: weekAgo, updatedAt: now },
+  { id: 'fld-ops-sops', name: 'SOPs', parentId: null, ownerId: CURRENT_FILES_USER.id, workspaceId: 'ws-ops', isStarred: false, memberCount: 8, createdAt: older, updatedAt: yesterday },
+  { id: 'fld-ops-reports', name: 'Reports', parentId: null, ownerId: CURRENT_FILES_USER.id, workspaceId: 'ws-ops', isStarred: false, memberCount: 8, createdAt: older, updatedAt: now },
+  { id: 'fld-ops-templates', name: 'Templates', parentId: null, ownerId: CURRENT_FILES_USER.id, workspaceId: 'ws-ops', isStarred: false, memberCount: 8, createdAt: older, updatedAt: weekAgo },
+  { id: 'fld-ops-projects', name: 'Projects', parentId: null, ownerId: CURRENT_FILES_USER.id, workspaceId: 'ws-ops', isStarred: false, memberCount: 8, createdAt: older, updatedAt: yesterday },
+];
+
+function file(partial: Partial<CodinFile> & Pick<CodinFile, 'id' | 'name' | 'kind' | 'size' | 'folderId'>): CodinFile {
+  return {
+    originalName: partial.name,
+    mimeType: 'application/octet-stream',
+    storageProvider: 'codin',
+    storageKey: `codin/${partial.id}`,
+    workspaceId: 'ws-personal',
+    ownerId: CURRENT_FILES_USER.id,
+    ownerName: CURRENT_FILES_USER.name,
+    description: '',
+    tags: [],
+    version: 1,
+    isStarred: false,
+    accessLevel: 'private',
+    createdAt: weekAgo,
+    updatedAt: now,
+    lastAccessedAt: now,
+    lastModifiedBy: CURRENT_FILES_USER.name,
+    sharedWithCount: 0,
+    ...partial,
+  };
+}
+
+export const INITIAL_FILES: CodinFile[] = [
+  file({
+    id: 'file-proposal',
+    name: 'Project Proposal.pdf',
+    kind: 'pdf',
+    size: 2_400_000,
+    folderId: 'fld-abc',
+    description: 'Client proposal for ABC Logistics fleet operations.',
+    tags: ['Proposal', 'Client'],
+    version: 4,
+    isStarred: true,
+    accessLevel: 'people',
+    sharedWithCount: 8,
+    lastAccessedAt: now,
+    updatedAt: now,
+    previewText:
+      'ABC Logistics — Project Proposal\n\nPayment terms: Net 30 from invoice date.\nKickoff: September 2, 2026.\nScope: Fleet operations dashboard, driver app, and reporting suite.\n\n1. Executive summary\nCodin will deliver a unified operations workspace for ABC Logistics covering dispatch, invoicing, and customer communication.\n\n2. Timeline\nPhase 1 discovery through September. Phase 2 build through November.',
+  }),
+  file({
+    id: 'file-budget',
+    name: 'Budget.xlsx',
+    kind: 'xlsx',
+    size: 1_800_000,
+    folderId: 'fld-finance',
+    tags: ['Finance'],
+    isStarred: true,
+    accessLevel: 'people',
+    sharedWithCount: 3,
+    lastAccessedAt: yesterday,
+    updatedAt: yesterday,
+  }),
+  file({
+    id: 'file-contract',
+    name: 'Contract.docx',
+    kind: 'docx',
+    size: 850_000,
+    folderId: 'fld-abc',
+    tags: ['Legal', 'Client'],
+    accessLevel: 'people',
+    sharedWithCount: 4,
+    lastAccessedAt: '2026-08-20T16:00:00.000Z',
+    updatedAt: weekAgo,
+    ownerId: 'user-maya',
+    ownerName: 'Maya Chen',
+    sharedByName: 'Maya Chen',
+    previewText: 'Master services agreement between Codin and ABC Logistics. Term: 12 months. Confidential.',
+  }),
+  file({
+    id: 'file-agenda',
+    name: 'Meeting Agenda.docx',
+    kind: 'docx',
+    size: 120_000,
+    folderId: 'fld-abc',
+    tags: ['Meeting'],
+    lastAccessedAt: now,
+    updatedAt: now,
+  }),
+  file({
+    id: 'file-invoice',
+    name: 'Invoice.pdf',
+    kind: 'pdf',
+    size: 420_000,
+    folderId: 'fld-abc',
+    tags: ['Finance'],
+    lastAccessedAt: yesterday,
+    updatedAt: yesterday,
+    previewText: 'Invoice #1042 — ABC Logistics — $48,000 — due September 23, 2026.',
+  }),
+  file({
+    id: 'file-brand',
+    name: 'Brand guidelines.pdf',
+    kind: 'pdf',
+    size: 6_200_000,
+    folderId: 'fld-marketing',
+    lastAccessedAt: older,
+    updatedAt: older,
+  }),
+  file({
+    id: 'file-photo',
+    name: 'Warehouse.jpg',
+    kind: 'jpg',
+    size: 3_100_000,
+    folderId: 'fld-abc',
+    previewUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1200&auto=format&fit=crop&q=80',
+    lastAccessedAt: yesterday,
+  }),
+  file({
+    id: 'file-video',
+    name: 'Site walkthrough.mp4',
+    kind: 'mp4',
+    size: 48_000_000,
+    folderId: 'fld-projects',
+    lastAccessedAt: weekAgo,
+    workspaceId: 'ws-fleet',
+  }),
+  file({
+    id: 'file-notes',
+    name: 'Discovery notes.txt',
+    kind: 'txt',
+    size: 18_000,
+    folderId: 'fld-abc',
+    previewText: 'Discovery notes\n- Need signed contract before kickoff\n- Payment terms Net 30\n- Dual-language driver app requested',
+    lastAccessedAt: now,
+  }),
+  file({
+    id: 'file-pricing',
+    name: 'Pricing.csv',
+    kind: 'csv',
+    size: 24_000,
+    folderId: 'fld-finance',
+    previewText: 'sku,item,price\nFL-1,Fleet dashboard,18000\nDR-2,Driver app,12000\nRP-3,Reporting,8000',
+    lastAccessedAt: yesterday,
+  }),
+  file({
+    id: 'file-deck',
+    name: 'Q3 Review.pptx',
+    kind: 'pptx',
+    size: 5_400_000,
+    folderId: 'fld-marketing',
+    lastAccessedAt: weekAgo,
+  }),
+  file({
+    id: 'file-sop',
+    name: 'Onboarding SOP.pdf',
+    kind: 'pdf',
+    size: 980_000,
+    folderId: 'fld-ops-sops',
+    workspaceId: 'ws-ops',
+    lastAccessedAt: yesterday,
+    accessLevel: 'team',
+    sharedWithCount: 8,
+  }),
+  file({
+    id: 'file-dup',
+    name: 'Proposal (1).pdf',
+    kind: 'pdf',
+    size: 2_390_000,
+    folderId: 'fld-abc',
+    description: 'Potential duplicate of Project Proposal.pdf',
+    lastAccessedAt: older,
+    updatedAt: older,
+  }),
+  file({
+    id: 'file-trashed',
+    name: 'Old quote.docx',
+    kind: 'docx',
+    size: 210_000,
+    folderId: null,
+    deletedAt: now,
+    lastAccessedAt: older,
+  }),
+  file({
+    id: 'file-shared-in',
+    name: 'Competitive analysis.xlsx',
+    kind: 'xlsx',
+    size: 640_000,
+    folderId: null,
+    ownerId: 'user-lee',
+    ownerName: 'Lee Robinson',
+    sharedByName: 'Lee Robinson',
+    accessLevel: 'people',
+    sharedWithCount: 2,
+    lastAccessedAt: now,
+    updatedAt: now,
+  }),
+];
+
+export const INITIAL_PERMISSIONS: FilePermission[] = [
+  { id: 'perm-1', fileId: 'file-proposal', userId: 'user-maya', userName: 'Maya Chen', userEmail: 'maya.chen@codin.io', role: 'editor', createdAt: weekAgo },
+  { id: 'perm-2', fileId: 'file-proposal', userId: 'user-lee', userName: 'Lee Robinson', userEmail: 'lee@codin.io', role: 'commenter', createdAt: yesterday },
+  { id: 'perm-3', fileId: 'file-proposal', userId: 'user-john', userName: 'John Smith', userEmail: 'john.smith@codin.io', role: 'viewer', createdAt: yesterday },
+  { id: 'perm-4', fileId: 'file-proposal', userId: 'user-mary', userName: 'Mary Jones', userEmail: 'mary.jones@codin.io', role: 'viewer', createdAt: yesterday },
+  { id: 'perm-5', fileId: 'file-budget', userId: 'user-maya', userName: 'Maya Chen', userEmail: 'maya.chen@codin.io', role: 'viewer', createdAt: yesterday },
+];
+
+export const INITIAL_ACTIVITY: FileActivity[] = [
+  { id: 'act-1', fileId: 'file-proposal', userId: CURRENT_FILES_USER.id, userName: 'Alex Morgan', action: 'uploaded this file', createdAt: weekAgo },
+  { id: 'act-2', fileId: 'file-proposal', userId: 'user-lee', userName: 'Lee Robinson', action: 'viewed this file', createdAt: '2026-08-24T11:14:00.000Z' },
+  { id: 'act-3', fileId: 'file-proposal', userId: 'user-maya', userName: 'Maya Chen', action: 'downloaded this file', createdAt: '2026-08-24T11:20:00.000Z' },
+  { id: 'act-4', fileId: 'file-proposal', userId: CURRENT_FILES_USER.id, userName: 'Alex Morgan', action: 'renamed this file', metadata: 'Proposal.pdf → Project Proposal.pdf', createdAt: now },
+  { id: 'act-5', fileId: 'file-contract', userId: 'user-maya', userName: 'Maya Chen', action: 'shared this file with you', createdAt: weekAgo },
+];
+
+export const INITIAL_VERSIONS: FileVersion[] = [
+  { id: 'ver-4', fileId: 'file-proposal', version: 4, storageKey: 'codin/file-proposal/v4', size: 2_400_000, createdBy: 'Alex Morgan', createdAt: now },
+  { id: 'ver-3', fileId: 'file-proposal', version: 3, storageKey: 'codin/file-proposal/v3', size: 2_280_000, createdBy: 'Maya Chen', createdAt: yesterday },
+  { id: 'ver-2', fileId: 'file-proposal', version: 2, storageKey: 'codin/file-proposal/v2', size: 2_100_000, createdBy: 'Alex Morgan', createdAt: '2026-08-21T14:00:00.000Z' },
+  { id: 'ver-1', fileId: 'file-proposal', version: 1, storageKey: 'codin/file-proposal/v1', size: 1_900_000, createdBy: 'Alex Morgan', createdAt: weekAgo },
+];
+
+export const INITIAL_RELATIONS: FileRelation[] = [
+  { id: 'rel-1', fileId: 'file-proposal', objectType: 'email', objectId: 'mail-1', objectTitle: 'Client Proposal Email', relationType: 'attachment' },
+  { id: 'rel-2', fileId: 'file-proposal', objectType: 'meeting', objectId: 'meet-1', objectTitle: 'Client Review Meeting', relationType: 'meeting_file' },
+  { id: 'rel-3', fileId: 'file-proposal', objectType: 'task', objectId: 'task-1', objectTitle: 'Proposal Task', relationType: 'attachment' },
+  { id: 'rel-4', fileId: 'file-proposal', objectType: 'contact', objectId: 'ct-abc', objectTitle: 'ABC Logistics', relationType: 'related' },
+  { id: 'rel-5', fileId: 'file-proposal', objectType: 'project', objectId: 'ws-abc', objectTitle: 'ABC Logistics', relationType: 'workspace' },
+  { id: 'rel-6', fileId: 'file-agenda', objectType: 'event', objectId: 'cal-1', objectTitle: 'Project Review', relationType: 'event_file' },
+  { id: 'rel-7', fileId: 'file-contract', objectType: 'contact', objectId: 'ct-abc', objectTitle: 'ABC Logistics', relationType: 'related' },
+];
+
+export function createInitialFilesStore(): FilesStore {
+  return {
+    files: INITIAL_FILES,
+    folders: INITIAL_FOLDERS,
+    permissions: INITIAL_PERMISSIONS,
+    activity: INITIAL_ACTIVITY,
+    versions: INITIAL_VERSIONS,
+    relations: INITIAL_RELATIONS,
+    workspaces: FILE_WORKSPACES,
+  };
+}

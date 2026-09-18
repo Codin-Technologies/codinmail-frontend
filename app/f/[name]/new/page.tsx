@@ -1,176 +1,36 @@
 'use client';
 
-import { LeftSidebar } from '@/app/components/left-sidebar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { sendEmailAction } from '@/lib/db/actions';
 import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
-import { Paperclip, Trash2 } from 'lucide-react';
+import { Bold, Clock3, Expand, Italic, Paperclip, PenLine, Smile, Trash2, Underline, X } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Suspense, useActionState } from 'react';
+import { Suspense, useActionState, useState } from 'react';
 
-function DiscardDraftLink() {
-  let { name } = useParams();
-
-  return (
-    <Link href={`/f/${name}`} className="text-gray-400 hover:text-gray-600">
-      <Trash2 size={20} />
-    </Link>
-  );
-}
-
-function EmailBody({ defaultValue = '' }: { defaultValue?: string }) {
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (
-      (e.ctrlKey || e.metaKey) &&
-      (e.key === 'Enter' || e.key === 'NumpadEnter')
-    ) {
-      e.preventDefault();
-      e.currentTarget.form?.requestSubmit();
-    }
-  };
-
-  return (
-    <div>
-      <textarea
-        name="body"
-        placeholder="Tip: Hit Shift ⏎ to send"
-        className="h-[calc(100vh-300px)] w-full resize-none rounded-md border border-gray-300 p-2 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-        required
-        onKeyDown={handleKeyDown}
-        defaultValue={defaultValue}
-      />
-    </div>
-  );
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="compose-field"><span>{label}</span>{children}</label>;
 }
 
 export default function ComposePage() {
-  let [state, formAction] = useActionState(sendEmailAction, {
-    error: '',
-    previous: {
-      recipientEmail: '',
-      subject: '',
-      body: '',
-    },
-  });
+  return <Suspense fallback={<main className="compose-backdrop" />}><ComposeContent /></Suspense>;
+}
 
+function ComposeContent() {
+  const { name } = useParams<{ name: string }>();
+  const [showRecipients, setShowRecipients] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [state, formAction, pending] = useActionState(sendEmailAction, { error: '', previous: { recipientEmail: '', subject: '', body: '' } });
   const isProduction = process.env.NEXT_PUBLIC_VERCEL_ENV === 'production';
 
-  return (
-    <div className="flex h-full grow">
-      <LeftSidebar />
-      <div className="grow p-6">
-        <h1 className="mb-6 text-2xl font-semibold">New Message</h1>
-        {state.error && (
-          <div className="mb-4">
-            <Alert variant="destructive" className="relative">
-              <ExclamationTriangleIcon className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{state.error}</AlertDescription>
-            </Alert>
-          </div>
-        )}
-        <form action={formAction} className="space-y-4">
-          <div className="relative">
-            <span className="absolute top-1/2 left-3 -translate-y-1/2 transform text-gray-500">
-              To
-            </span>
-            <input
-              type="email"
-              name="recipientEmail"
-              defaultValue={state.previous.recipientEmail?.toString()}
-              className="w-full rounded-md border border-gray-300 py-2 pr-10 pl-12 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-            />
-          </div>
-          <div className="relative">
-            <span className="absolute top-1/2 left-3 -translate-y-1/2 transform text-gray-500">
-              Subject
-            </span>
-            <input
-              type="text"
-              name="subject"
-              defaultValue={state.previous.subject?.toString()}
-              className="w-full rounded-md border border-gray-300 py-2 pl-20 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-            />
-          </div>
-          <EmailBody defaultValue={state.previous.body?.toString()} />
-          <div className="flex flex-col items-center justify-between sm:flex-row">
-            <TooltipProvider>
-              <div className="flex space-x-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="submit"
-                      disabled={isProduction}
-                      className="cursor-pointer rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Send
-                    </button>
-                  </TooltipTrigger>
-                  {isProduction && (
-                    <TooltipContent>
-                      <p>Sending emails is disabled in production</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      disabled={isProduction}
-                      className="cursor-pointer rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Send later
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>This feature is not yet implemented</p>
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      disabled={isProduction}
-                      className="cursor-pointer rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Remind me
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>This feature is not yet implemented</p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-              <div className="mt-4 ml-auto flex space-x-3 sm:mt-0">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      disabled
-                      type="button"
-                      className="cursor-pointer text-gray-400 hover:text-gray-600 disabled:cursor-not-allowed"
-                    >
-                      <Paperclip size={20} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Attachments are not yet implemented</p>
-                  </TooltipContent>
-                </Tooltip>
-                <Suspense fallback={<Trash2 size={20} />}>
-                  <DiscardDraftLink />
-                </Suspense>
-              </div>
-            </TooltipProvider>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+  return <main className={`compose-backdrop ${isFullscreen ? 'is-fullscreen' : ''}`}><section className="compose-modal" role="dialog" aria-modal="true" aria-labelledby="compose-title">
+    <header className="compose-header"><div className="compose-title"><span className="compose-logo">C</span><div><span className="eyebrow">Codin Mail</span><h1 id="compose-title">New message</h1></div></div><div className="compose-header-actions"><button type="button" className="compose-icon" onClick={() => setIsFullscreen((value) => !value)} aria-label={isFullscreen ? 'Exit full screen compose' : 'Open full screen compose'}><Expand size={16} /></button><Link href={`/f/${name}`} className="compose-icon" aria-label="Close compose window"><X size={17} /></Link></div></header>
+    {state.error && <div className="compose-error"><Alert variant="destructive"><ExclamationTriangleIcon className="h-4 w-4" /><AlertTitle>Message not sent</AlertTitle><AlertDescription>{state.error}</AlertDescription></Alert></div>}
+    <form action={formAction} className="compose-form"><input type="hidden" name="returnTo" value={name} /><div className="compose-recipient-row"><Field label="To"><input type="email" name="recipientEmail" autoFocus required defaultValue={state.previous.recipientEmail?.toString()} placeholder="recipient@company.com" /></Field><button type="button" className="recipient-options" onClick={() => setShowRecipients((value) => !value)} aria-expanded={showRecipients}>{showRecipients ? 'Hide fields' : 'Cc / Bcc'}</button></div>
+      {showRecipients && <div className="compose-extra-fields"><Field label="Cc"><input type="text" name="cc" placeholder="Add recipients" /></Field><Field label="Bcc"><input type="text" name="bcc" placeholder="Add hidden recipients" /></Field></div>}
+      <Field label="Subject"><input type="text" name="subject" required defaultValue={state.previous.subject?.toString()} placeholder="Subject" /></Field>
+      <div className="editor-wrap"><div className="editor-toolbar" aria-label="Formatting tools"><button type="button" aria-label="Bold"><Bold size={15} /></button><button type="button" aria-label="Italic"><Italic size={15} /></button><button type="button" aria-label="Underline"><Underline size={15} /></button><span className="toolbar-divider" /><button type="button" aria-label="Attach file"><Paperclip size={15} /></button><button type="button" aria-label="Add emoji"><Smile size={15} /></button></div><textarea name="body" required defaultValue={state.previous.body?.toString()} placeholder="Write your message..." onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} /></div>
+      <footer className="compose-footer"><div className="compose-footer-actions"><button type="submit" className="compose-send" disabled={pending || isProduction}><PenLine size={15} /> {pending ? 'Sending...' : 'Send'}</button><button type="button" className="compose-schedule" disabled={isProduction}><Clock3 size={15} /> Schedule</button></div><div className="compose-footer-actions"><button type="button" className="compose-muted" disabled={isProduction} aria-label="Attach file"><Paperclip size={17} /></button><Link href={`/f/${name}`} className="compose-muted" aria-label="Discard draft"><Trash2 size={17} /></Link></div></footer>
+    </form>
+  </section></main>;
 }

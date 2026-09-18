@@ -1,16 +1,16 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import { Suspense } from 'react';
 import { Toaster } from 'sonner';
-import { RightSidebar } from './components/right-sidebar';
-import { WelcomeToast } from './components/welcome-toast';
+import { AuthProvider } from '@/lib/stores/auth-context';
+import { WorkspaceProvider } from '@/lib/stores/workspace-context';
+import { ThemeProvider } from '@/lib/stores/theme-context';
+import { QueryProvider } from '@/lib/api/query-provider';
+import { RouteGuard } from '@/app/components/route-guard';
+import { Suspense } from 'react';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
-
 export const metadata: Metadata = {
-  title: 'Next.js Mail',
-  description: 'An email client template using the Next.js App Router.',
+  title: 'Codin | Unified communication workspace',
+  description: 'A focused workspace for email, chat, calendar, tasks, and files.',
 };
 
 export default function RootLayout({
@@ -19,21 +19,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`bg-white text-gray-800 ${inter.className}`}>
-      <body className="flex h-screen">
-        <main className="grow overflow-hidden">{children}</main>
-        <Suspense fallback={<RightSidebarSkeleton />}>
-          <RightSidebar userId={1} />
-        </Suspense>
-        <Toaster closeButton />
-        <WelcomeToast />
+    <html lang="en" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+      <body>
+         <AuthProvider>
+            <WorkspaceProvider>
+              <ThemeProvider>
+                <QueryProvider>
+                  <Suspense fallback={null}>
+                    <RouteGuard>
+                      <main className="min-h-screen">{children}</main>
+                    </RouteGuard>
+                  </Suspense>
+                </QueryProvider>
+                <Toaster closeButton />
+              </ThemeProvider>
+            </WorkspaceProvider>
+          </AuthProvider>
       </body>
     </html>
-  );
-}
-
-function RightSidebarSkeleton() {
-  return (
-    <div className="hidden w-[350px] shrink-0 overflow-auto bg-neutral-50 p-6 sm:flex" />
   );
 }
