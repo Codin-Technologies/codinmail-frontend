@@ -1,6 +1,6 @@
 'use client';
 
-import type { emails, users } from '@/lib/db/schema';
+import type { UIThread, UIEmail } from '@/lib/features/mail/hooks/use-threads-adapter';
 import {
   Archive,
   ArrowDownUp,
@@ -40,17 +40,6 @@ import {
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
-type Email = Omit<typeof emails.$inferSelect, 'threadId'> & {
-  sender: Pick<typeof users.$inferSelect, 'id' | 'firstName' | 'lastName' | 'email'>;
-};
-
-type Thread = {
-  id: number;
-  subject: string | null;
-  lastActivityDate: Date | null;
-  emails: Email[];
-};
-
 import { CalendarWorkspace } from './calendar/calendar-workspace';
 import { FilesWorkspace } from './files/files-workspace';
 import { MeetWorkspace } from './meet/meet-workspace';
@@ -59,6 +48,9 @@ import { SaveToFilesDialog } from './files/modals/save-to-files-dialog';
 import { loadFilesStore } from '@/lib/files/storage';
 import { saveAttachmentToFiles } from '@/lib/files/service';
 import { toast } from 'sonner';
+
+type Email = UIEmail;
+type Thread = UIThread;
 
 type Workspace = 'mail' | 'chat' | 'contacts' | 'calendar' | 'meet' | 'files' | 'tasks' | 'ai';
 type Theme = 'light' | 'dark' | 'system';
@@ -114,7 +106,7 @@ export function ApplicationShell({ folderName, threads, searchQuery, initialWork
   const [openWorkspace, setOpenWorkspace] = useState<Workspace | null>(null);
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [selectedId, setSelectedId] = useState(threads[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(threads[0]?.id ?? null);
   const [query, setQuery] = useState(searchQuery ?? '');
   const [searchOpen, setSearchOpen] = useState(Boolean(searchQuery));
   const [theme, setTheme] = useState<Theme>('light');
@@ -214,7 +206,7 @@ function ContextLink({ icon: Icon, label, active = false, count }: { icon: typeo
   return <button className={`context-link ${active ? 'active' : ''}`}><Icon size={16} /><span>{label}</span>{count && <b>{count}</b>}</button>;
 }
 
-function MailList({ folderName, threads, selectedId, onSelect, query, searchOpen, onQueryChange, onToggleSearch }: { folderName: string; threads: Thread[]; selectedId: number | null; onSelect: (id: number) => void; query: string; searchOpen: boolean; onQueryChange: (query: string) => void; onToggleSearch: () => void }) {
+function MailList({ folderName, threads, selectedId, onSelect, query, searchOpen, onQueryChange, onToggleSearch }: { folderName: string; threads: Thread[]; selectedId: string | null; onSelect: (id: string) => void; query: string; searchOpen: boolean; onQueryChange: (query: string) => void; onToggleSearch: () => void }) {
   return <section className="mail-list-panel" aria-label="Email threads">
     <div className="panel-heading"><div><span className="eyebrow">Email</span><h1>{folderName === 'inbox' ? 'Inbox' : folderName}</h1></div><div className="mail-heading-actions">{searchOpen && <div className="inline-search"><Search size={14} /><input autoFocus value={query} onChange={(event) => onQueryChange(event.target.value)} aria-label="Search email" placeholder="Search mail" /></div>}<button className="icon-button" onClick={onToggleSearch} aria-label={searchOpen ? 'Close search' : 'Search email'}><Search size={17} /></button><button className="icon-button" aria-label="Open apps"><LayoutGrid size={17} /></button></div></div>
     <div className="list-toolbar"><span><strong>{threads.length}</strong> conversations</span><div className="toolbar-controls"><label><ListFilter size={13} /><select aria-label="Filter conversations" defaultValue="all"><option value="all">All mail</option><option value="unread">Unread</option><option value="starred">Starred</option><option value="attachments">Attachments</option></select></label><label><ArrowDownUp size={13} /><select aria-label="Sort conversations" defaultValue="newest"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="sender">Sender</option><option value="subject">Subject</option></select></label></div></div>

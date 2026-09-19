@@ -1,28 +1,70 @@
+'use client';
+
 import { ApplicationShell } from '@/app/components/application-shell';
-import { getThreadsForFolder } from '@/lib/db/queries';
+import { useThreads } from '@/lib/features/mail/hooks/use-threads';
+import { adaptThreadListItems } from '@/lib/features/mail/hooks/use-threads-adapter';
+import { useWorkspace } from '@/lib/stores/workspace-context';
+import { Suspense } from 'react';
 
-export const metadata = {
-  title: 'Codin Meet | Enterprise Video Conferencing & Collaboration',
-  description: 'Native video meetings connected with Mail, Chat, Calendar, Tasks, Files, and AI.',
-};
+function MeetThreads() {
+  const { activeWorkspace } = useWorkspace();
+  const workspaceId = activeWorkspace?.id ?? '';
 
-export default async function MeetPage() {
-  let threads: any[] = [];
-  let dataUnavailable = false;
-  try {
-    threads = await getThreadsForFolder('inbox');
-  } catch {
-    dataUnavailable = true;
+  const { data, isLoading, isError } = useThreads('inbox');
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full">
+        <ApplicationShell
+          folderName="inbox"
+          threads={[]}
+          initialWorkspace="meet"
+          dataUnavailable={false}
+        />
+      </div>
+    );
   }
+
+  if (isError || !data) {
+    return (
+      <div className="flex h-screen w-full">
+        <ApplicationShell
+          folderName="inbox"
+          threads={[]}
+          initialWorkspace="meet"
+          dataUnavailable={true}
+        />
+      </div>
+    );
+  }
+
+  const adaptedThreads = adaptThreadListItems(data.threads);
 
   return (
     <div className="flex h-screen w-full">
       <ApplicationShell
         folderName="inbox"
-        threads={threads}
+        threads={adaptedThreads}
         initialWorkspace="meet"
-        dataUnavailable={dataUnavailable}
+        dataUnavailable={false}
       />
     </div>
+  );
+}
+
+export default function MeetPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen w-full">
+        <ApplicationShell
+          folderName="inbox"
+          threads={[]}
+          initialWorkspace="meet"
+          dataUnavailable={false}
+        />
+      </div>
+    }>
+      <MeetThreads />
+    </Suspense>
   );
 }

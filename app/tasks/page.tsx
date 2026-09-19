@@ -1,28 +1,70 @@
+'use client';
+
 import { ApplicationShell } from '@/app/components/application-shell';
-import { getThreadsForFolder } from '@/lib/db/queries';
+import { useThreads } from '@/lib/features/mail/hooks/use-threads';
+import { adaptThreadListItems } from '@/lib/features/mail/hooks/use-threads-adapter';
+import { useWorkspace } from '@/lib/stores/workspace-context';
+import { Suspense } from 'react';
 
-export const metadata = {
-  title: 'Tasks Workspace | Codin Unified Platform',
-  description: 'Track action items, manage team workload, and connect tasks to conversations.',
-};
+function TasksThreads() {
+  const { activeWorkspace } = useWorkspace();
+  const workspaceId = activeWorkspace?.id ?? '';
 
-export default async function TasksPage() {
-  let threads: any[] = [];
-  let dataUnavailable = false;
-  try {
-    threads = await getThreadsForFolder('inbox');
-  } catch {
-    dataUnavailable = true;
+  const { data, isLoading, isError } = useThreads('inbox');
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full">
+        <ApplicationShell
+          folderName="inbox"
+          threads={[]}
+          initialWorkspace="tasks"
+          dataUnavailable={false}
+        />
+      </div>
+    );
   }
+
+  if (isError || !data) {
+    return (
+      <div className="flex h-screen w-full">
+        <ApplicationShell
+          folderName="inbox"
+          threads={[]}
+          initialWorkspace="tasks"
+          dataUnavailable={true}
+        />
+      </div>
+    );
+  }
+
+  const adaptedThreads = adaptThreadListItems(data.threads);
 
   return (
     <div className="flex h-screen w-full">
       <ApplicationShell
         folderName="inbox"
-        threads={threads}
+        threads={adaptedThreads}
         initialWorkspace="tasks"
-        dataUnavailable={dataUnavailable}
+        dataUnavailable={false}
       />
     </div>
+  );
+}
+
+export default function TasksPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen w-full">
+        <ApplicationShell
+          folderName="inbox"
+          threads={[]}
+          initialWorkspace="tasks"
+          dataUnavailable={false}
+        />
+      </div>
+    }>
+      <TasksThreads />
+    </Suspense>
   );
 }

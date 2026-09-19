@@ -1,24 +1,15 @@
 'use client';
 
 import { ThreadActions } from '@/app/components/thread-actions';
-import { emails, users } from '@/lib/db/schema';
+import type { UIThread, UIEmail } from '@/lib/features/mail/hooks/use-threads-adapter';
 import { formatEmailString } from '@/lib/utils';
 import { PenSquare, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { NavMenu } from './menu';
 
-type Email = Omit<typeof emails.$inferSelect, 'threadId'> & {
-  sender: Pick<User, 'id' | 'firstName' | 'lastName' | 'email'>;
-};
-type User = typeof users.$inferSelect;
-
-type ThreadWithEmails = {
-  id: number;
-  subject: string | null;
-  lastActivityDate: Date | null;
-  emails: Email[];
-};
+type Email = UIEmail;
+type ThreadWithEmails = UIThread;
 
 interface ThreadListProps {
   folderName: string;
@@ -61,7 +52,7 @@ export function ThreadHeader({
 }
 
 export function ThreadList({ folderName, threads }: ThreadListProps) {
-  const [hoveredThread, setHoveredThread] = useState<number | null>(null);
+  const [hoveredThread, setHoveredThread] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -77,7 +68,7 @@ export function ThreadList({ folderName, threads }: ThreadListProps) {
     };
   }, []);
 
-  const handleMouseEnter = (threadId: number) => {
+  const handleMouseEnter = (threadId: string) => {
     if (!isMobile) {
       setHoveredThread(threadId);
     }
@@ -127,7 +118,7 @@ export function ThreadList({ folderName, threads }: ThreadListProps) {
                     <ThreadActions threadId={thread.id} />
                   ) : (
                     <span className="text-sm text-gray-500">
-                      {new Date(thread.lastActivityDate!).toLocaleDateString()}
+                      {thread.lastActivityDate ? new Date(thread.lastActivityDate).toLocaleDateString() : ''}
                     </span>
                   )}
                 </div>

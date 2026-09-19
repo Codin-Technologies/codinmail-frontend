@@ -1,23 +1,70 @@
+'use client';
+
 import { ApplicationShell } from '@/app/components/application-shell';
-import { getThreadsForFolder } from '@/lib/db/queries';
+import { useThreads } from '@/lib/features/mail/hooks/use-threads';
+import { adaptThreadListItems } from '@/lib/features/mail/hooks/use-threads-adapter';
+import { useWorkspace } from '@/lib/stores/workspace-context';
+import { Suspense } from 'react';
 
-export const metadata = {
-  title: 'Codin Files | Documents and work objects',
-  description: 'Store, share, and connect files with Mail, Meet, Calendar, Tasks, and Contacts.',
-};
+function FilesThreads() {
+  const { activeWorkspace } = useWorkspace();
+  const workspaceId = activeWorkspace?.id ?? '';
 
-export default async function FilesPage() {
-  let threads: any[] = [];
-  let dataUnavailable = false;
-  try {
-    threads = await getThreadsForFolder('inbox');
-  } catch {
-    dataUnavailable = true;
+  const { data, isLoading, isError } = useThreads('inbox');
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full">
+        <ApplicationShell
+          folderName="inbox"
+          threads={[]}
+          initialWorkspace="files"
+          dataUnavailable={false}
+        />
+      </div>
+    );
   }
+
+  if (isError || !data) {
+    return (
+      <div className="flex h-screen w-full">
+        <ApplicationShell
+          folderName="inbox"
+          threads={[]}
+          initialWorkspace="files"
+          dataUnavailable={true}
+        />
+      </div>
+    );
+  }
+
+  const adaptedThreads = adaptThreadListItems(data.threads);
 
   return (
     <div className="flex h-screen w-full">
-      <ApplicationShell folderName="inbox" threads={threads} initialWorkspace="files" dataUnavailable={dataUnavailable} />
+      <ApplicationShell
+        folderName="inbox"
+        threads={adaptedThreads}
+        initialWorkspace="files"
+        dataUnavailable={false}
+      />
     </div>
+  );
+}
+
+export default function FilesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen w-full">
+        <ApplicationShell
+          folderName="inbox"
+          threads={[]}
+          initialWorkspace="files"
+          dataUnavailable={false}
+        />
+      </div>
+    }>
+      <FilesThreads />
+    </Suspense>
   );
 }

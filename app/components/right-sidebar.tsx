@@ -1,8 +1,24 @@
-import { getUserProfile } from '@/lib/db/queries';
+'use client';
+
 import Image from 'next/image';
 
-export async function RightSidebar({ userId }: { userId: number }) {
-  let user = await getUserProfile(userId);
+interface UserProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  avatarUrl?: string;
+  location: string;
+  jobTitle: string;
+  company: string;
+  linkedin?: string;
+  twitter?: string;
+  github?: string;
+  latestThreads: Array<{ subject: string }>;
+}
+
+export async function RightSidebar({ userId }: { userId: string }) {
+  const user = await getUserProfile(userId);
 
   if (!user) {
     return null;
@@ -88,4 +104,19 @@ export async function RightSidebar({ userId }: { userId: number }) {
       </div>
     </div>
   );
+}
+
+async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  if (!userId) return null;
+
+  try {
+    const response = await fetch(`/api/v1/users/${userId}/profile`, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.user ?? null;
+  } catch {
+    return null;
+  }
 }

@@ -4,22 +4,28 @@ import { ApplicationShell } from '@/app/components/application-shell';
 import { useThreads } from '@/lib/features/mail/hooks/use-threads';
 import { adaptThreadListItems } from '@/lib/features/mail/hooks/use-threads-adapter';
 import { useWorkspace } from '@/lib/stores/workspace-context';
-import { Suspense, useState } from 'react';
+import { useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 
-function CalendarThreads() {
+export function ThreadsClient() {
+  const params = useParams<{ name: string }>();
+  const searchParams = useSearchParams();
   const { activeWorkspace } = useWorkspace();
-  const workspaceId = activeWorkspace?.id ?? '';
 
-  const { data, isLoading, isError } = useThreads('inbox');
+  const folderName = params.name;
+  const searchQuery = searchParams.get('q') ?? '';
+
+  const { data, isLoading, isError } = useThreads(folderName);
   const [threads, setThreads] = useState<ReturnType<typeof adaptThreadListItems>>([]);
+  const [dataUnavailable, setDataUnavailable] = useState(false);
 
   if (isLoading) {
     return (
       <div className="flex h-screen w-full">
         <ApplicationShell
-          folderName="inbox"
+          folderName={folderName}
           threads={[]}
-          initialWorkspace="calendar"
+          searchQuery={searchQuery}
           dataUnavailable={false}
         />
       </div>
@@ -27,12 +33,13 @@ function CalendarThreads() {
   }
 
   if (isError || !data) {
+    setDataUnavailable(true);
     return (
       <div className="flex h-screen w-full">
         <ApplicationShell
-          folderName="inbox"
+          folderName={folderName}
           threads={[]}
-          initialWorkspace="calendar"
+          searchQuery={searchQuery}
           dataUnavailable={true}
         />
       </div>
@@ -41,32 +48,16 @@ function CalendarThreads() {
 
   const adaptedThreads = adaptThreadListItems(data.threads);
   setThreads(adaptedThreads);
+  setDataUnavailable(false);
 
   return (
     <div className="flex h-screen w-full">
       <ApplicationShell
-        folderName="inbox"
+        folderName={folderName}
         threads={adaptedThreads}
-        initialWorkspace="calendar"
+        searchQuery={searchQuery}
         dataUnavailable={false}
       />
     </div>
-  );
-}
-
-export default function CalendarPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex h-screen w-full">
-        <ApplicationShell
-          folderName="inbox"
-          threads={[]}
-          initialWorkspace="calendar"
-          dataUnavailable={false}
-        />
-      </div>
-    }>
-      <CalendarThreads />
-    </Suspense>
   );
 }
