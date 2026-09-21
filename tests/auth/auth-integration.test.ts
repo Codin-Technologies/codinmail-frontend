@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CodinAuthApi } from '@/lib/features/auth/api/auth.real';
 import { getAuthApi, resetAuthApi, setAuthApi } from '@/lib/features/auth/api/auth.client';
-import { getAccessToken, setAccessToken } from '@/lib/api/supabase-client';
+import { getAccessToken, setAccessToken } from '@/lib/api/api-client';
 import { apiFetch } from '@/lib/api/api-client';
 import { ApiError } from '@/lib/api/api-errors';
 

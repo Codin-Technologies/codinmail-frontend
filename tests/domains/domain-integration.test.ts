@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MockDomainApi } from '@/lib/features/domains/api/domain.mock';
 import { CodinDomainApi } from '@/lib/features/domains/api/domain.real';
 import { getDomainApi, resetDomainApi, setDomainApi } from '@/lib/features/domains/api/domain.client';
-import { setAccessToken } from '@/lib/api/supabase-client';
+import { getAccessToken, setAccessToken } from '@/lib/api/api-client';
 
 describe('Domain Integration Tests', () => {
   beforeEach(() => {

@@ -1,6 +1,29 @@
 import { ApiError, isApiErrorResponse } from './api-errors';
 import { getApiUrl } from './config';
-import { getAccessToken } from './supabase-client';
+
+let cachedAccessToken: string | null = null;
+
+export function getAccessToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  if (cachedAccessToken !== null) return cachedAccessToken;
+  try {
+    return localStorage.getItem('codin_access_token');
+  } catch {
+    return null;
+  }
+}
+
+export function setAccessToken(token: string | null): void {
+  cachedAccessToken = token;
+  if (typeof window === 'undefined') return;
+  try {
+    if (token === null) {
+      localStorage.removeItem('codin_access_token');
+    } else {
+      localStorage.setItem('codin_access_token', token);
+    }
+  } catch {}
+}
 
 export interface RequestOptions {
   method?: string;

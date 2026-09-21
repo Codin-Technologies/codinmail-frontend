@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MockWorkspaceApi } from '@/lib/features/workspace/api/workspace.mock';
 import { CodinWorkspaceApi } from '@/lib/features/workspace/api/workspace.real';
 import { getWorkspaceApi, resetWorkspaceApi, setWorkspaceApi } from '@/lib/features/workspace/api/workspace.client';
-import { setAccessToken } from '@/lib/api/supabase-client';
+import { getAccessToken, setAccessToken } from '@/lib/api/api-client';
 
 describe('Workspace Integration Tests', () => {
   beforeEach(() => {

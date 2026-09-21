@@ -1,88 +1,56 @@
 import type { AuthApi, AuthResult, BootstrapInput, CurrentUser, LoginCredentials, RegisterInput } from './auth.types';
-import { apiFetch } from '@/lib/api/api-client';
+import { apiFetch, getAccessToken, setAccessToken } from '@/lib/api/api-client';
 import { ApiError } from '@/lib/api/api-errors';
-import { getSupabaseClient, getAccessToken, setAccessToken } from '@/lib/api/supabase-client';
 
 export class CodinAuthApi implements AuthApi {
-  verificationCode?: string;
-
   async login(credentials: LoginCredentials): Promise<AuthResult> {
-    const supabase = await getSupabaseClient();
-    if (!supabase) {
-      throw new Error('Supabase client not configured');
+    try {
+      const result = await apiFetch('/auth/login', {
+        method: 'POST',
+        body: credentials,
+      }) as { success: boolean; user?: CurrentUser; token?: string; error?: string };
+
+      if (result.success && result.user) {
+        if (result.token) {
+          setAccessToken(result.token);
+        }
+        return { success: true, user: result.user };
+      }
+      return { success: false, error: result.error ?? 'Login failed' };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Login failed';
+      return { success: false, error: msg };
     }
-
-    const { data, error } = await (supabase as any).auth.signInWithPassword({
-      email: credentials.email,
-      password: credentials.password,
-    });
-
-    if (error || !data.user || !data.session) {
-      return { success: false, error: error?.message ?? 'Login failed' };
-    }
-
-    setAccessToken(data.session.access_token);
-
-    const me = await this.getCurrentUser();
-    if (!me) {
-      const user = await this.bootstrap({
-        firstName: data.user.user_metadata?.first_name ?? credentials.email.split('@')[0],
-        lastName: data.user.user_metadata?.last_name ?? '',
-        displayName: data.user.user_metadata?.full_name ?? credentials.email.split('@')[0],
-      });
-      return { success: true, user };
-    }
-
-    return { success: true, user: me };
   }
 
   async register(input: RegisterInput): Promise<AuthResult> {
-    const supabase = await getSupabaseClient();
-    if (!supabase) {
-      throw new Error('Supabase client not configured');
-    }
+    try {
+      const result = await apiFetch('/auth/register', {
+        method: 'POST',
+        body: input,
+      }) as { success: boolean; user?: CurrentUser; status?: string; token?: string; error?: string };
 
-    const { data, error } = await (supabase as any).auth.signUp({
-      email: input.email,
-      password: input.password,
-      options: {
-        data: {
-          first_name: input.firstName ?? input.name?.split(' ')[0] ?? '',
-          last_name: input.lastName ?? input.name?.split(' ').slice(1).join(' ') ?? '',
-          full_name: input.displayName ?? input.name ?? input.email.split('@')[0],
-        },
-      },
-    });
-
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
-    if (data.user && !data.session) {
-      return { success: true, error: 'VERIFICATION_REQUIRED' };
-    }
-
-    if (data.session) {
-      setAccessToken(data.session.access_token);
-      const user = await this.getCurrentUser();
-      if (!user) {
-        const bootstrapped = await this.bootstrap({
-          firstName: input.firstName ?? input.name?.split(' ')[0] ?? '',
-          lastName: input.lastName ?? '',
-          displayName: input.displayName ?? input.name ?? input.email.split('@')[0],
-        });
-        return { success: true, user: bootstrapped };
+      if (result.success && result.user) {
+        if (result.token) {
+          setAccessToken(result.token);
+        }
+        return { success: true, user: result.user };
       }
-      return { success: true, user };
+      if (result.status === 'pending_verification') {
+        return { success: true, error: 'VERIFICATION_REQUIRED' };
+      }
+      return { success: false, error: result.error ?? 'Registration failed' };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Registration failed';
+      return { success: false, error: msg };
     }
-
-    return { success: true };
   }
 
   async logout(): Promise<void> {
-    const supabase = await getSupabaseClient();
-    if (supabase) {
-      await (supabase as any).auth.signOut();
+    try {
+      await apiFetch('/auth/logout', { method: 'POST' });
+    } catch {
+      // Continue clearing local state regardless of server response
     }
     setAccessToken(null);
   }
@@ -117,64 +85,59 @@ export class CodinAuthApi implements AuthApi {
   }
 
   async verifyEmail(user: CurrentUser, code: string): Promise<AuthResult> {
-    const supabase = await getSupabaseClient();
-    if (!supabase) {
-      throw new Error('Supabase client not configured');
+    try {
+      const result = await apiFetch('/auth/verify-email', {
+        method: 'POST',
+        body: { email: user.email, token: code },
+      }) as { success: boolean; user?: CurrentUser; token?: string; error?: string };
+
+      if (result.success && result.user) {
+        if (result.token) {
+          setAccessToken(result.token);
+        }
+        return { success: true, user: result.user };
+      }
+      return { success: false, error: result.error ?? 'Verification failed' };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Verification failed';
+      return { success: false, error: msg };
     }
-
-    const { data, error } = await (supabase as any).auth.verifyOtp({
-      email: user.email,
-      token: code,
-      type: 'email',
-    });
-
-    if (error || !data.user) {
-      return { success: false, error: error?.message ?? 'Invalid verification code' };
-    }
-
-    if (data.session) {
-      setAccessToken(data.session.access_token);
-    }
-
-    const updatedUser = await this.getCurrentUser();
-    return { success: !!updatedUser, user: updatedUser ?? undefined };
   }
 
   async resendVerification(email: string): Promise<{ success: boolean }> {
-    const supabase = await getSupabaseClient();
-    if (!supabase) {
-      throw new Error('Supabase client not configured');
+    try {
+      const result = await apiFetch('/auth/resend-verification', {
+        method: 'POST',
+        body: { email },
+      }) as { success: boolean };
+      return { success: result.success ?? false };
+    } catch {
+      return { success: false };
     }
-
-    const { error } = await (supabase as any).auth.resend({
-      email,
-      type: 'signup',
-    });
-
-    return { success: !error };
   }
 
   async forgotPassword(email: string): Promise<{ success: boolean; email: string }> {
-    const supabase = await getSupabaseClient();
-    if (!supabase) {
-      throw new Error('Supabase client not configured');
+    try {
+      const result = await apiFetch('/auth/forgot-password', {
+        method: 'POST',
+        body: { email },
+      }) as { success: boolean; email: string };
+      return { success: result.success ?? false, email: result.email ?? email };
+    } catch {
+      return { success: false, email };
     }
-
-    const { error } = await (supabase as any).auth.resetPasswordForEmail(email);
-    return { success: !error, email };
   }
 
-  async resetPassword(_token: string, password: string): Promise<{ success: boolean }> {
-    const supabase = await getSupabaseClient();
-    if (!supabase) {
-      throw new Error('Supabase client not configured');
+  async resetPassword(token: string, password: string): Promise<{ success: boolean }> {
+    try {
+      const result = await apiFetch('/auth/reset-password', {
+        method: 'POST',
+        body: { token, password },
+      }) as { success: boolean };
+      return { success: result.success ?? false };
+    } catch {
+      return { success: false };
     }
-
-    const { error } = await (supabase as any).auth.updateUser({
-      password: password,
-    });
-
-    return { success: !error };
   }
 }
 
