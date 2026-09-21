@@ -112,11 +112,11 @@ export default function VerifyEmailPage() {
                   maxLength={6}
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="123456"
+                  placeholder="Enter 6-digit code"
                   className="h-12 w-full rounded-lg border border-input bg-background px-3 text-center text-lg font-mono tracking-widest outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                   required
                 />
-                <p className="mt-1 text-[11px] text-muted-foreground">Demo code: 123456</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Enter the code sent to your email</p>
               </div>
 
               <Button type="submit" className="h-10 w-full text-sm font-semibold" disabled={isVerifying}>

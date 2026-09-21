@@ -9,14 +9,15 @@ interface AuthState {
   status: AuthStatus;
   verificationEmail: string | null;
   verificationCode: string | null;
-  loginError: string | null;
+  authError: string | null;
 }
 
 type AuthAction =
   | { type: 'SET_LOADING' }
   | { type: 'SET_USER'; user: CurrentUser }
   | { type: 'SET_PENDING_VERIFICATION'; email: string; code: string }
-  | { type: 'SET_LOGIN_ERROR'; error: string | null }
+  | { type: 'SET_AUTH_ERROR'; error: string | null }
+  | { type: 'CLEAR_ERROR' }
   | { type: 'LOGOUT' };
 
 const initialState: AuthState = {
@@ -24,21 +25,23 @@ const initialState: AuthState = {
   status: 'loading',
   verificationEmail: null,
   verificationCode: null,
-  loginError: null,
+  authError: null,
 };
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
     case 'SET_LOADING':
-      return { ...state, status: 'loading', loginError: null };
+      return { ...state, status: 'loading', authError: null };
     case 'SET_USER':
-      return { ...state, user: action.user, status: 'authenticated', loginError: null, verificationEmail: null, verificationCode: null };
+      return { ...state, user: action.user, status: 'authenticated', authError: null, verificationEmail: null, verificationCode: null };
     case 'SET_PENDING_VERIFICATION':
-      return { ...state, status: 'pending_verification', verificationEmail: action.email, verificationCode: action.code, loginError: null };
-    case 'SET_LOGIN_ERROR':
-      return { ...state, loginError: action.error, status: 'unauthenticated' };
+      return { ...state, status: 'pending_verification', verificationEmail: action.email, verificationCode: action.code, authError: null };
+    case 'SET_AUTH_ERROR':
+      return { ...state, authError: action.error };
+    case 'CLEAR_ERROR':
+      return { ...state, authError: null };
     case 'LOGOUT':
-      return { ...state, user: null, status: 'unauthenticated', verificationEmail: null, verificationCode: null, loginError: null };
+      return { ...state, user: null, status: 'unauthenticated', verificationEmail: null, verificationCode: null, authError: null };
     default:
       return state;
   }
@@ -71,12 +74,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const code = api.verificationCode ?? '';
         dispatch({ type: 'SET_PENDING_VERIFICATION', email: credentials.email, code });
       } else if (result.error) {
-        dispatch({ type: 'SET_LOGIN_ERROR', error: result.error });
+        dispatch({ type: 'SET_AUTH_ERROR', error: result.error });
       }
       return result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login failed';
-      dispatch({ type: 'SET_LOGIN_ERROR', error: msg });
+      dispatch({ type: 'SET_AUTH_ERROR', error: msg });
       return { success: false, error: msg };
     }
   }, []);
@@ -92,21 +95,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const code = api.verificationCode ?? '';
         dispatch({ type: 'SET_PENDING_VERIFICATION', email: input.email, code });
       } else if (result.error) {
-        dispatch({ type: 'SET_LOGIN_ERROR', error: result.error });
+        dispatch({ type: 'SET_AUTH_ERROR', error: result.error });
       }
       return result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Registration failed';
-      dispatch({ type: 'SET_LOGIN_ERROR', error: msg });
+      dispatch({ type: 'SET_AUTH_ERROR', error: msg });
       return { success: false, error: msg };
     }
   }, []);
 
   const verifyEmail = useCallback(async (code: string): Promise<AuthResult> => {
-    if (!state.user) return { success: false, error: 'No user to verify' };
+    const email = state.user?.email ?? state.verificationEmail;
+    if (!email) return { success: false, error: 'No user to verify' };
     try {
       const api = await getAuthApi();
-      const result = await api.verifyEmail(state.user, code);
+      const result = await api.verifyEmail({ id: '', email, displayName: '', firstName: '', lastName: '', status: 'pending', timezone: '', locale: '', authUserId: '' }, code);
       if (result.success && result.user) {
         dispatch({ type: 'SET_USER', user: result.user });
       }
@@ -115,17 +119,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const msg = err instanceof Error ? err.message : 'Verification failed';
       return { success: false, error: msg };
     }
-  }, [state.user]);
+  }, [state.user, state.verificationEmail]);
 
   const resendVerification = useCallback(async (): Promise<{ success: boolean }> => {
-    if (!state.user?.email) return { success: false };
+    if (!state.user?.email && !state.verificationEmail) return { success: false };
     try {
       const api = await getAuthApi();
-      return api.resendVerification(state.user.email);
+      const email = state.user?.email ?? state.verificationEmail!;
+      return api.resendVerification(email);
     } catch {
       return { success: false };
     }
-  }, [state.user?.email]);
+  }, [state.user?.email, state.verificationEmail]);
 
   const forgotPassword = useCallback(async (email: string): Promise<{ success: boolean; email: string }> => {
     try {
@@ -152,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const clearError = useCallback(() => {
-    dispatch({ type: 'SET_LOGIN_ERROR', error: null });
+    dispatch({ type: 'CLEAR_ERROR' });
   }, []);
 
   useEffect(() => {

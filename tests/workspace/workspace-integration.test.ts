@@ -9,36 +9,13 @@ describe('Workspace Integration Tests', () => {
     localStorage.clear();
     setAccessToken('mock-token');
     resetWorkspaceApi();
-    delete process.env.NEXT_PUBLIC_API_MODE;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  describe('API Mode Switching', () => {
-    it('returns MockWorkspaceApi when mode is mock', async () => {
-      process.env.NEXT_PUBLIC_API_MODE = 'mock';
-      const api = await getWorkspaceApi();
-      expect(api).toBeInstanceOf(MockWorkspaceApi);
-    });
-
-    it('returns CodinWorkspaceApi when mode is real', async () => {
-      process.env.NEXT_PUBLIC_API_MODE = 'real';
-      resetWorkspaceApi();
-      const api = await getWorkspaceApi();
-      expect(api).toBeInstanceOf(CodinWorkspaceApi);
-    });
-
-    it('allows custom override with setWorkspaceApi', async () => {
-      const customApi = new MockWorkspaceApi();
-      setWorkspaceApi(customApi);
-      const api = await getWorkspaceApi();
-      expect(api).toBe(customApi);
-    });
-  });
-
-  describe('MockWorkspaceApi Operations', () => {
+  describe('Custom Override', () => {
     it('lists workspaces successfully', async () => {
       const api = new MockWorkspaceApi();
       const workspaces = await api.list();

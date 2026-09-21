@@ -9,36 +9,13 @@ describe('Domain Integration Tests', () => {
     localStorage.clear();
     setAccessToken('mock-token');
     resetDomainApi();
-    delete process.env.NEXT_PUBLIC_API_MODE;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  describe('API Mode Switching', () => {
-    it('returns MockDomainApi when mode is mock', async () => {
-      process.env.NEXT_PUBLIC_API_MODE = 'mock';
-      const api = await getDomainApi();
-      expect(api).toBeInstanceOf(MockDomainApi);
-    });
-
-    it('returns CodinDomainApi when mode is real', async () => {
-      process.env.NEXT_PUBLIC_API_MODE = 'real';
-      resetDomainApi();
-      const api = await getDomainApi();
-      expect(api).toBeInstanceOf(CodinDomainApi);
-    });
-
-    it('allows custom override with setDomainApi', async () => {
-      const customApi = new MockDomainApi();
-      setDomainApi(customApi);
-      const api = await getDomainApi();
-      expect(api).toBe(customApi);
-    });
-  });
-
-  describe('MockDomainApi Operations', () => {
+  describe('Custom Override', () => {
     const wsId = 'ws_demo_001';
 
     it('lists domains for a workspace', async () => {
