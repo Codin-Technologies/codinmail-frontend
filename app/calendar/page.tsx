@@ -3,52 +3,25 @@
 import { ApplicationShell } from '@/app/components/application-shell';
 import { useThreads } from '@/lib/features/mail/hooks/use-threads';
 import { adaptThreadListItems } from '@/lib/features/mail/hooks/use-threads-adapter';
-import { useWorkspace } from '@/lib/stores/workspace-context';
-import { Suspense, useState } from 'react';
+import { Suspense, useMemo } from 'react';
 
 function CalendarThreads() {
-  const { activeWorkspace } = useWorkspace();
-  const workspaceId = activeWorkspace?.id ?? '';
-
   const { data, isLoading, isError } = useThreads('inbox');
-  const [threads, setThreads] = useState<ReturnType<typeof adaptThreadListItems>>([]);
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen w-full">
-        <ApplicationShell
-          folderName="inbox"
-          threads={[]}
-          initialWorkspace="calendar"
-          dataUnavailable={false}
-        />
-      </div>
-    );
-  }
+  const threads = useMemo(
+    () => (data?.threads ? adaptThreadListItems(data.threads) : []),
+    [data],
+  );
 
-  if (isError || !data) {
-    return (
-      <div className="flex h-screen w-full">
-        <ApplicationShell
-          folderName="inbox"
-          threads={[]}
-          initialWorkspace="calendar"
-          dataUnavailable={true}
-        />
-      </div>
-    );
-  }
-
-  const adaptedThreads = adaptThreadListItems(data.threads);
-  setThreads(adaptedThreads);
+  const dataUnavailable = !isLoading && (isError || !data);
 
   return (
     <div className="flex h-screen w-full">
       <ApplicationShell
         folderName="inbox"
-        threads={adaptedThreads}
+        threads={threads}
         initialWorkspace="calendar"
-        dataUnavailable={false}
+        dataUnavailable={dataUnavailable}
       />
     </div>
   );

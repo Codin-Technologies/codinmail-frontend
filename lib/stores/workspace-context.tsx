@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import type { Workspace, CreateWorkspaceInput } from '@/lib/features/workspace/api/workspace.types';
 import { getWorkspaceApi } from '@/lib/features/workspace/api/workspace.client';
+import { useAuth } from '@/lib/stores/auth-context';
 
 interface WorkspaceStateValue {
   activeWorkspace: Workspace | null;
@@ -66,6 +67,7 @@ interface WorkspaceContextValue extends WorkspaceStateValue {
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
+  const { status: authStatus } = useAuth();
   const [state, dispatch] = useReducer(workspaceReducer, initialState);
 
   const loadWorkspaces = useCallback(async (): Promise<void> => {
@@ -145,12 +147,18 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem('codin_active_workspace') : null;
-    const token = typeof window !== 'undefined' ? localStorage.getItem('codin_access_token') : null;
-    if (saved || token) {
+    if (authStatus === 'authenticated') {
       loadWorkspaces();
+      return;
     }
-  }, [loadWorkspaces]);
+    if (authStatus === 'unauthenticated') {
+      dispatch({ type: 'SET_WORKSPACES', workspaces: [] });
+      dispatch({ type: 'SET_ACTIVE', workspace: null });
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('codin_active_workspace');
+      }
+    }
+  }, [authStatus, loadWorkspaces]);
 
   return (
     <WorkspaceContext.Provider

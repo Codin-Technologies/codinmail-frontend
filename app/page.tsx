@@ -12,12 +12,19 @@ export default function HomePage() {
   const { workspaces, activeWorkspace, status: workspaceStatus } = useWorkspace();
 
   useEffect(() => {
-    if (authStatus === 'loading' || workspaceStatus === 'loading') return;
+    if (authStatus === 'loading') return;
 
-    if (!user) {
+    if (authStatus === 'unauthenticated' || !user) {
       router.replace('/sign-in');
       return;
     }
+
+    if (authStatus === 'pending_verification') {
+      router.replace('/verify-email');
+      return;
+    }
+
+    if (workspaceStatus === 'idle' || workspaceStatus === 'loading') return;
 
     if (workspaces.length === 0) {
       router.replace('/onboarding');
@@ -29,10 +36,7 @@ export default function HomePage() {
       return;
     }
 
-    if (workspaces.length > 0 && !activeWorkspace) {
-      router.replace('/workspaces/select');
-      return;
-    }
+    router.replace('/workspaces/select');
   }, [user, authStatus, workspaceStatus, workspaces.length, activeWorkspace, router]);
 
   return <Loading />;

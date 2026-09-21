@@ -14,7 +14,7 @@ export default function ErrorBoundary({
   const isDatabaseError = /postgres|database|connection|ECONNREFUSED|connect/i.test(error.message);
 
   useEffect(() => {
-    console.error('Server Component Error:', error);
+    console.error('Application error:', error);
   }, [error]);
 
   return (
@@ -60,10 +60,16 @@ export default function ErrorBoundary({
 
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
-              Target:{' '}
-              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-foreground">
-                localhost:54322
-              </code>
+              {isDatabaseError ? (
+                <>
+                  Target:{' '}
+                  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-foreground">
+                    localhost:54322
+                  </code>
+                </>
+              ) : (
+                error.message || 'Unexpected render error'
+              )}
             </span>
             <button
               onClick={() => reset()}

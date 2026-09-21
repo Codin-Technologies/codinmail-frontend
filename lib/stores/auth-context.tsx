@@ -21,7 +21,7 @@ type AuthAction =
 
 const initialState: AuthState = {
   user: null,
-  status: 'unauthenticated',
+  status: 'loading',
   verificationEmail: null,
   verificationCode: null,
   loginError: null,

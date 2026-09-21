@@ -16,7 +16,7 @@ export const demoUser: CurrentUser = {
 
 export class MockAuthApi implements AuthApi {
   verificationCode?: string;
-  private _currentUser: CurrentUser | null = demoUser;
+  private _currentUser: CurrentUser | null = null;
   private _pendingVerification: { email: string; code: string } | null = null;
 
   async login(credentials: LoginCredentials): Promise<AuthResult> {
@@ -82,12 +82,14 @@ export class MockAuthApi implements AuthApi {
 
   async getCurrentUser(): Promise<CurrentUser | null> {
     await wait(180);
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('codin_access_token');
-      if (!token) {
-        this._currentUser = null;
-        return null;
-      }
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    const token = localStorage.getItem('codin_access_token');
+    if (!token || !this._currentUser) {
+      this._currentUser = null;
+      localStorage.removeItem('codin_access_token');
+      return null;
     }
     return this._currentUser;
   }
