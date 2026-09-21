@@ -21,20 +21,20 @@ export default function RootLayout({
   return (
     <html lang="en" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
       <body>
-         <AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
             <WorkspaceProvider>
               <ThemeProvider>
-                <QueryProvider>
-                  <Suspense fallback={null}>
-                    <RouteGuard>
-                      <main className="min-h-screen">{children}</main>
-                    </RouteGuard>
-                  </Suspense>
-                </QueryProvider>
+                <Suspense fallback={null}>
+                  <RouteGuard>
+                    <main className="min-h-screen">{children}</main>
+                  </RouteGuard>
+                </Suspense>
                 <Toaster closeButton />
               </ThemeProvider>
             </WorkspaceProvider>
           </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );
