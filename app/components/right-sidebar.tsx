@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { apiFetch } from '@/lib/api/api-client';
 
 interface UserProfile {
   id: string;
@@ -110,12 +111,8 @@ async function getUserProfile(userId: string): Promise<UserProfile | null> {
   if (!userId) return null;
 
   try {
-    const response = await fetch(`/api/v1/users/${userId}/profile`, {
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.user ?? null;
+    const response = await apiFetch(`/users/${userId}/profile`) as { user?: UserProfile };
+    return response?.user ?? null;
   } catch {
     return null;
   }

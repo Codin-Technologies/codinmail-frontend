@@ -5,6 +5,7 @@ import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
 import { ArrowLeft, Building2, Mail, Phone, Save, UserRound, X } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { apiFetch } from '@/lib/api/api-client';
 
 function ContactField({ label, name, placeholder, type = 'text', icon: Icon, defaultValue, required = false }: { label: string; name: string; placeholder: string; type?: string; icon: typeof Mail; defaultValue?: string; required?: boolean }) {
   return <label className="contact-field"><span>{label}{required && <b aria-hidden="true">*</b>}</span><div className="contact-input"><Icon size={16} aria-hidden="true" /><input name={name} type={type} placeholder={placeholder} defaultValue={defaultValue} required={required} /></div></label>;
@@ -41,18 +42,10 @@ export default function NewContactPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/v1/contacts', {
+      await apiFetch('/contacts', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+        body: formData,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Failed to create contact');
-      }
 
       window.location.href = '/contacts';
     } catch (err) {

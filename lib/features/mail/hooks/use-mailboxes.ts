@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMailApi } from "../api/mail.client";
 import { useWorkspace } from "@/lib/stores/workspace-context";
+import { apiFetch } from "@/lib/api/api-client";
 import type { Mailbox } from "../types/mail.api.types";
 
 export function useMailboxes() {
@@ -23,12 +24,8 @@ export function useConnectedAccounts(workspaceId: string) {
     queryKey: ["mail", workspaceId, "accounts"],
     queryFn: async () => {
       if (!workspaceId) throw new Error("Workspace ID required");
-      const response = await fetch(`/api/v1/workspaces/${workspaceId}/mail/accounts`, {
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!response.ok) throw new Error("Failed to fetch accounts");
-      const data = await response.json();
-      return data.accounts ?? [];
+      const response = await apiFetch(`/workspaces/${workspaceId}/mail/accounts`) as { accounts?: unknown[] };
+      return response?.accounts ?? [];
     },
     enabled: !!workspaceId,
     staleTime: 60_000,

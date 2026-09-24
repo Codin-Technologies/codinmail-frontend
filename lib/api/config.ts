@@ -9,7 +9,8 @@ export function getApiUrl(): string {
     }
     return 'http://localhost:3000/api/v1';
   }
-  return url;
+  if (url.endsWith('/api/v1')) return url;
+  return `${url.replace(/\/+$/, '')}/api/v1`;
 }
 
 export const SIGN_BASE = '/workspaces';
