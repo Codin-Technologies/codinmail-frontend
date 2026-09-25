@@ -10,12 +10,14 @@ export class CodinAuthApi implements AuthApi {
       const result = await apiFetch('/auth/login', {
         method: 'POST',
         body: credentials,
-      }) as { success: boolean; user?: CurrentUser; token?: string; error?: string };
+      }) as {
+        user?: CurrentUser;
+        session?: { accessToken: string; refreshToken: string; expiresAt: number } | null;
+        error?: string;
+      };
 
-      if (result.success && result.user) {
-        if (result.token) {
-          setAccessToken(result.token);
-        }
+      if (result.user && result.session) {
+        setAccessToken(result.session.accessToken);
         return { success: true, user: result.user };
       }
       return { success: false, error: result.error ?? 'Login failed' };
