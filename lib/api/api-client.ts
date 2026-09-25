@@ -96,7 +96,24 @@ export async function apiFetch(
 }
 
 function buildUrl(basePath: string, params?: Record<string, string | number | boolean>, workspaceId?: string): string {
-  const url = new URL(basePath, getApiUrl());
+  const apiUrl = new URL(getApiUrl());
+  const basePathname = apiUrl.pathname.replace(/\/+$/, '');
+  const normalizedPath = basePath.replace(/^\/+/, '');
+  const normalizedBasePath = basePathname.replace(/^\/+/, '');
+  const isAbsoluteUrl = /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(basePath) || basePath.startsWith('//');
+  const pathIncludesBase = normalizedBasePath.length > 0 && (
+    normalizedPath === normalizedBasePath ||
+    normalizedPath.startsWith(`${normalizedBasePath}/`) ||
+    normalizedPath.startsWith(`${normalizedBasePath}?`) ||
+    normalizedPath.startsWith(`${normalizedBasePath}#`)
+  );
+
+  // Keep absolute URLs as explicit overrides; treat relative paths as belonging to the API prefix.
+  const url = isAbsoluteUrl
+    ? new URL(basePath, apiUrl)
+    : pathIncludesBase
+      ? new URL(`/${normalizedPath}`, apiUrl.origin)
+      : new URL(normalizedPath, `${apiUrl.origin}${basePathname}/`);
 
   if (workspaceId && !basePath.includes(workspaceId)) {
     url.searchParams.append('workspaceId', workspaceId);
