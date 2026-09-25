@@ -10,9 +10,10 @@ import { useAuth } from '@/lib/stores/auth-context';
 export default function SignUpPage() {
   const router = useRouter();
   const { user, status, register, clearError } = useAuth();
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
-  const [codinId, setCodinId] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,9 +33,10 @@ export default function SignUpPage() {
 
   const validate = () => {
     const errors: Record<string, string> = {};
-    if (!name.trim() || name.trim().length < 2) errors.name = 'Enter your full name.';
+    if (!firstName.trim() || firstName.trim().length > 100) errors.firstName = 'Enter a first name (up to 100 characters).';
+    if (!lastName.trim() || lastName.trim().length > 100) errors.lastName = 'Enter a last name (up to 100 characters).';
+    if (!displayName.trim() || displayName.trim().length > 255) errors.displayName = 'Enter a display name (up to 255 characters).';
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Enter a valid email address.';
-    if (!codinId.trim() || codinId.trim().length < 3) errors.codinId = 'Codin ID must be at least 3 characters.';
     if (!password || password.length < 8) errors.password = 'Password must be at least 8 characters.';
     if (password !== confirmPassword) errors.confirmPassword = 'Passwords do not match.';
     setLocalErrors(errors);
@@ -63,7 +65,13 @@ export default function SignUpPage() {
     if (!validate()) return;
     setIsSubmitting(true);
     try {
-      await register({ name: name.trim(), email: email.trim(), codinId: codinId.trim(), password });
+      await register({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        displayName: displayName.trim(),
+        email: email.trim(),
+        password,
+      });
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -71,7 +79,7 @@ export default function SignUpPage() {
     }
   };
 
-  const isFormInvalid = !name.trim() || !email.trim() || !codinId.trim() || !password || !confirmPassword;
+  const isFormInvalid = !firstName.trim() || !lastName.trim() || !displayName.trim() || !email.trim() || !password || !confirmPassword;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
@@ -93,19 +101,54 @@ export default function SignUpPage() {
           )}
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-foreground">Full Name</label>
+            <label className="mb-1.5 block text-xs font-medium text-foreground">First Name</label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Kelvin Kijazi"
-                className={`h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 ${localErrors.name ? 'border-destructive' : 'border-input'}`}
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Kelvin"
+                maxLength={100}
+                className={`h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 ${localErrors.firstName ? 'border-destructive' : 'border-input'}`}
                 required
               />
             </div>
-            {localErrors.name && <p className="mt-1 text-xs text-destructive">{localErrors.name}</p>}
+            {localErrors.firstName && <p className="mt-1 text-xs text-destructive">{localErrors.firstName}</p>}
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-foreground">Last Name</label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Kijazi"
+                maxLength={100}
+                className={`h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 ${localErrors.lastName ? 'border-destructive' : 'border-input'}`}
+                required
+              />
+            </div>
+            {localErrors.lastName && <p className="mt-1 text-xs text-destructive">{localErrors.lastName}</p>}
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-foreground">Display Name</label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Kelvin Kijazi"
+                maxLength={255}
+                className={`h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 ${localErrors.displayName ? 'border-destructive' : 'border-input'}`}
+                required
+              />
+            </div>
+            {localErrors.displayName && <p className="mt-1 text-xs text-destructive">{localErrors.displayName}</p>}
           </div>
 
           <div>
@@ -122,22 +165,6 @@ export default function SignUpPage() {
               />
             </div>
             {localErrors.email && <p className="mt-1 text-xs text-destructive">{localErrors.email}</p>}
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-foreground">Codin ID</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">@</span>
-              <input
-                type="text"
-                value={codinId}
-                onChange={(e) => setCodinId(e.target.value.toLowerCase().replace(/[^a-z0-9.]/g, ''))}
-                placeholder="kelvin.kijazi"
-                className={`h-10 w-full rounded-lg border bg-background pl-8 pr-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 ${localErrors.codinId ? 'border-destructive' : 'border-input'}`}
-                required
-              />
-            </div>
-            {localErrors.codinId && <p className="mt-1 text-xs text-destructive">{localErrors.codinId}</p>}
           </div>
 
           <div>

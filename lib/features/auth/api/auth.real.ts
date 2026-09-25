@@ -27,16 +27,24 @@ export class CodinAuthApi implements AuthApi {
     try {
       const result = await apiFetch('/auth/register', {
         method: 'POST',
-        body: input,
-      }) as { success: boolean; user?: CurrentUser; status?: string; token?: string; error?: string };
+        body: {
+          firstName: input.firstName,
+          lastName: input.lastName,
+          displayName: input.displayName,
+          email: input.email,
+          password: input.password,
+        },
+      }) as {
+        user?: CurrentUser;
+        session?: { accessToken: string; refreshToken: string; expiresAt: number } | null;
+        error?: string;
+      };
 
-      if (result.success && result.user) {
-        if (result.token) {
-          setAccessToken(result.token);
-        }
+      if (result.user && result.session) {
+        setAccessToken(result.session.accessToken);
         return { success: true, user: result.user };
       }
-      if (result.status === 'pending_verification') {
+      if (result.user && !result.session) {
         return { success: true, error: 'VERIFICATION_REQUIRED' };
       }
       return { success: false, error: result.error ?? 'Registration failed' };

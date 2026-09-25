@@ -22,13 +22,11 @@ export interface LoginCredentials {
 }
 
 export interface RegisterInput {
-  name?: string;
+  firstName: string;
+  lastName: string;
+  displayName: string;
   email: string;
-  codinId?: string;
   password: string;
-  firstName?: string;
-  lastName?: string;
-  displayName?: string;
 }
 
 export interface BootstrapInput {
