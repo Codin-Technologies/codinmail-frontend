@@ -7,7 +7,7 @@ import { Mail, CheckCircle2, AlertCircle, Loader2, ArrowRight, RefreshCw, Shield
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/stores/auth-context';
 import { getSupabaseClient } from '@/lib/api/supabase-client';
-import { setAccessToken, getAccessToken } from '@/lib/api/api-client';
+
 import { getAuthApi } from '@/lib/features/auth/api/auth.client';
 import type { CurrentUser } from '@/lib/features/auth/api/auth.types';
 
@@ -151,23 +151,38 @@ export default function VerifyEmailPage() {
 
       // 2. Handle PKCE code flow (?code=...)
       if (code && supabase) {
-        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        if (exchangeError) {
-          const isExpired = /expired|invalid/i.test(exchangeError.message);
-          if (isExpired) {
-            setViewState('expired_or_invalid');
-            setErrorMessage(exchangeError.message);
+        let session: any = null;
+        // Cooperate with Supabase's automatic detectSessionInUrl initialization
+        const { data: initialSession } = await supabase.auth.getSession();
+        session = initialSession?.session;
+
+        if (!session) {
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            // Check if concurrent automatic detection already consumed the code and established the session
+            const { data: retrySession } = await supabase.auth.getSession();
+            if (retrySession?.session) {
+              session = retrySession.session;
+            } else {
+              const isExpired = /expired|invalid/i.test(exchangeError.message);
+              if (isExpired) {
+                setViewState('expired_or_invalid');
+                setErrorMessage(exchangeError.message);
+              } else {
+                setViewState('error');
+                setErrorMessage(exchangeError.message);
+              }
+              return;
+            }
           } else {
-            setViewState('error');
-            setErrorMessage(exchangeError.message);
+            session = data.session;
           }
-          return;
         }
-        if (data.session) {
-          setAccessToken(data.session.access_token);
+
+        if (session) {
           sessionEstablished = true;
-          sbUser = data.user;
-          confirmedEmail = data.user?.email || '';
+          sbUser = session.user;
+          confirmedEmail = session.user?.email || '';
         }
       }
 
@@ -189,7 +204,6 @@ export default function VerifyEmailPage() {
           return;
         }
         if (data.session) {
-          setAccessToken(data.session.access_token);
           sessionEstablished = true;
           sbUser = data.user;
           confirmedEmail = data.user?.email || '';
@@ -204,14 +218,13 @@ export default function VerifyEmailPage() {
               access_token: accessToken,
               refresh_token: refreshToken || '',
             });
-          } catch (sbErr) {
-            console.warn('Supabase setSession notice:', sbErr);
+          } catch {
+            // Supabase client stores the session internally; non-fatal
           }
         }
-        setAccessToken(accessToken);
         sessionEstablished = true;
 
-        // Try extracting user from JWT
+        // Extract user email from JWT without logging
         try {
           const payload = JSON.parse(atob(accessToken.split('.')[1]));
           if (payload.email) confirmedEmail = payload.email;
@@ -285,7 +298,14 @@ export default function VerifyEmailPage() {
       let currentUser = await api.getCurrentUser();
 
       // If user profile is not yet bootstrapped in backend, bootstrap with Supabase metadata
-      if (!currentUser && getAccessToken()) {
+      // Determine if a Supabase session is present to authorise the bootstrap call
+      let hasSession = sessionEstablished;
+      if (!hasSession && supabase) {
+        const { data: sessionCheck } = await supabase.auth.getSession();
+        hasSession = !!sessionCheck?.session;
+      }
+
+      if (!currentUser && hasSession) {
         try {
           const firstName = sbUser?.user_metadata?.first_name || '';
           const lastName = sbUser?.user_metadata?.last_name || '';
@@ -305,7 +325,7 @@ export default function VerifyEmailPage() {
       }
 
       // 8. Confirm user is authenticated after callback
-      if (!currentUser && !getAccessToken()) {
+      if (!currentUser && !hasSession) {
         setViewState('unauthenticated_after_callback');
         return;
       }
@@ -318,7 +338,7 @@ export default function VerifyEmailPage() {
           status: 'active',
         };
         setUser(verifiedUser);
-      } else if (getAccessToken()) {
+      } else if (hasSession) {
         const fallbackUser: CurrentUser = {
           id: sbUser?.id || 'verified-user',
           authUserId: sbUser?.id || 'verified-user',

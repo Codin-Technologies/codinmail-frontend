@@ -7,7 +7,25 @@ export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
   if (cachedAccessToken !== null) return cachedAccessToken;
   try {
-    return localStorage.getItem('codin_access_token');
+    // 1. Check for backend-issued session token
+    const backendToken = localStorage.getItem('codin_access_token');
+    if (backendToken) return backendToken;
+
+    // 2. Check for Supabase browser client session (persisted by @supabase/supabase-js under 'codin_auth')
+    const sbAuthRaw = localStorage.getItem('codin_auth');
+    if (sbAuthRaw) {
+      try {
+        const parsed = JSON.parse(sbAuthRaw);
+        if (typeof parsed?.access_token === 'string') {
+          return parsed.access_token;
+        }
+        if (typeof parsed?.currentSession?.access_token === 'string') {
+          return parsed.currentSession.access_token;
+        }
+      } catch {}
+    }
+
+    return null;
   } catch {
     return null;
   }
