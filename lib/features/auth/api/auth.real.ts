@@ -1,6 +1,8 @@
 import type { AuthApi, AuthResult, BootstrapInput, CurrentUser, LoginCredentials, RegisterInput } from './auth.types';
 import { apiFetch, getAccessToken, setAccessToken } from '@/lib/api/api-client';
 import { ApiError } from '@/lib/api/api-errors';
+import { getSupabaseClient } from '@/lib/api/supabase-client';
+import { getVerificationRedirectUrl } from '@/lib/api/auth-config';
 
 export class CodinAuthApi implements AuthApi {
   async login(credentials: LoginCredentials): Promise<AuthResult> {
@@ -37,6 +39,7 @@ export class CodinAuthApi implements AuthApi {
       }) as {
         user?: CurrentUser;
         session?: { accessToken: string; refreshToken: string; expiresAt: number } | null;
+        status?: string;
         error?: string;
       };
 
@@ -44,7 +47,7 @@ export class CodinAuthApi implements AuthApi {
         setAccessToken(result.session.accessToken);
         return { success: true, user: result.user };
       }
-      if (result.user && !result.session) {
+      if ((result.user && !result.session) || result.session === null || result.status === 'pending_verification') {
         return { success: true, error: 'VERIFICATION_REQUIRED' };
       }
       return { success: false, error: result.error ?? 'Registration failed' };
@@ -112,13 +115,33 @@ export class CodinAuthApi implements AuthApi {
     }
   }
 
-  async resendVerification(email: string): Promise<{ success: boolean }> {
+  async resendVerification(email: string, redirectTo?: string): Promise<{ success: boolean; error?: string }> {
+    const emailRedirectTo = redirectTo || getVerificationRedirectUrl();
+    const supabase = getSupabaseClient();
+
+    if (supabase) {
+      try {
+        const { error } = await supabase.auth.resend({
+          type: 'signup',
+          email,
+          options: {
+            emailRedirectTo,
+          },
+        });
+        if (!error) {
+          return { success: true };
+        }
+      } catch {
+        // Fall back to backend if Supabase client call throws
+      }
+    }
+
     try {
       const result = await apiFetch('/auth/resend-verification', {
         method: 'POST',
-        body: { email },
-      }) as { success: boolean };
-      return { success: result.success ?? false };
+        body: { email, redirectTo: emailRedirectTo, emailRedirectTo },
+      }) as { success: boolean; error?: string };
+      return { success: result.success ?? false, error: result.error };
     } catch {
       return { success: false };
     }

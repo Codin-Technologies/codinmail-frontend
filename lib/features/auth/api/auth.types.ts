@@ -41,6 +41,7 @@ export interface AuthResult {
   success: boolean;
   user?: CurrentUser;
   error?: string;
+  requiresVerification?: boolean;
 }
 
 export interface AuthSession {
@@ -55,7 +56,7 @@ export interface AuthApi {
   getCurrentUser(): Promise<CurrentUser | null>;
   bootstrap(input: BootstrapInput): Promise<CurrentUser>;
   verifyEmail(user: CurrentUser, code: string): Promise<AuthResult>;
-  resendVerification(email: string): Promise<{ success: boolean }>;
+  resendVerification(email: string, redirectTo?: string): Promise<{ success: boolean; error?: string }>;
   forgotPassword(email: string): Promise<{ success: boolean; email: string }>;
   resetPassword(token: string, password: string): Promise<{ success: boolean }>;
   verificationCode?: string;

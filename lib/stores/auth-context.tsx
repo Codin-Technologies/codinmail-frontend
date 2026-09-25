@@ -15,10 +15,19 @@ interface AuthState {
 type AuthAction =
   | { type: 'SET_LOADING' }
   | { type: 'SET_USER'; user: CurrentUser }
-  | { type: 'SET_PENDING_VERIFICATION'; email: string; code: string }
+  | { type: 'SET_PENDING_VERIFICATION'; email: string; code?: string }
   | { type: 'SET_AUTH_ERROR'; error: string | null }
   | { type: 'CLEAR_ERROR' }
   | { type: 'LOGOUT' };
+
+function getInitialPendingEmail(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return sessionStorage.getItem('codin_pending_verification_email');
+  } catch {
+    return null;
+  }
+}
 
 const initialState: AuthState = {
   user: null,
@@ -33,9 +42,19 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
     case 'SET_LOADING':
       return { ...state, status: 'loading', authError: null };
     case 'SET_USER':
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.removeItem('codin_pending_verification_email');
+        } catch {}
+      }
       return { ...state, user: action.user, status: 'authenticated', authError: null, verificationEmail: null, verificationCode: null };
     case 'SET_PENDING_VERIFICATION':
-      return { ...state, status: 'pending_verification', verificationEmail: action.email, verificationCode: action.code, authError: null };
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem('codin_pending_verification_email', action.email);
+        } catch {}
+      }
+      return { ...state, status: 'pending_verification', verificationEmail: action.email, verificationCode: action.code ?? null, authError: null };
     case 'SET_AUTH_ERROR':
       return { ...state, authError: action.error };
     case 'CLEAR_ERROR':
@@ -51,11 +70,13 @@ interface AuthContextValue extends AuthState {
   register: (input: RegisterInput) => Promise<AuthResult>;
   login: (credentials: LoginCredentials) => Promise<AuthResult>;
   verifyEmail: (code: string) => Promise<AuthResult>;
-  resendVerification: () => Promise<{ success: boolean }>;
+  resendVerification: (targetEmail?: string) => Promise<{ success: boolean; error?: string }>;
   forgotPassword: (email: string) => Promise<{ success: boolean; email: string }>;
   resetPassword: () => Promise<{ success: boolean }>;
   logout: () => Promise<void>;
   clearError: () => void;
+  setUser: (user: CurrentUser) => void;
+  setPendingVerification: (email: string) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -71,8 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (result.success && result.user) {
         dispatch({ type: 'SET_USER', user: result.user });
       } else if (result.error === 'VERIFICATION_REQUIRED') {
-        const code = api.verificationCode ?? '';
-        dispatch({ type: 'SET_PENDING_VERIFICATION', email: credentials.email, code });
+        dispatch({ type: 'SET_PENDING_VERIFICATION', email: credentials.email });
       } else if (result.error) {
         dispatch({ type: 'SET_AUTH_ERROR', error: result.error });
       }
@@ -89,11 +109,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const api = await getAuthApi();
       const result = await api.register(input);
-      if (result.success && result.user) {
+      if (result.success && result.user && !result.error) {
         dispatch({ type: 'SET_USER', user: result.user });
-      } else if (result.error === 'VERIFICATION_REQUIRED') {
-        const code = api.verificationCode ?? '';
-        dispatch({ type: 'SET_PENDING_VERIFICATION', email: input.email, code });
+      } else if (result.error === 'VERIFICATION_REQUIRED' || (result.success && !result.user)) {
+        dispatch({ type: 'SET_PENDING_VERIFICATION', email: input.email });
       } else if (result.error) {
         dispatch({ type: 'SET_AUTH_ERROR', error: result.error });
       }
@@ -121,14 +140,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.user, state.verificationEmail]);
 
-  const resendVerification = useCallback(async (): Promise<{ success: boolean }> => {
-    if (!state.user?.email && !state.verificationEmail) return { success: false };
+  const resendVerification = useCallback(async (targetEmail?: string): Promise<{ success: boolean; error?: string }> => {
+    const email = targetEmail || state.verificationEmail || state.user?.email || getInitialPendingEmail();
+    if (!email) return { success: false, error: 'No email address found to resend verification link' };
     try {
       const api = await getAuthApi();
-      const email = state.user?.email ?? state.verificationEmail!;
-      return api.resendVerification(email);
+      return await api.resendVerification(email);
     } catch {
-      return { success: false };
+      return { success: false, error: 'Failed to resend verification email' };
     }
   }, [state.user?.email, state.verificationEmail]);
 
@@ -160,6 +179,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'CLEAR_ERROR' });
   }, []);
 
+  const setUser = useCallback((user: CurrentUser) => {
+    dispatch({ type: 'SET_USER', user });
+  }, []);
+
+  const setPendingVerification = useCallback((email: string) => {
+    dispatch({ type: 'SET_PENDING_VERIFICATION', email });
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     (async () => {
@@ -171,7 +198,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (user) {
           dispatch({ type: 'SET_USER', user });
         } else {
-          dispatch({ type: 'LOGOUT' });
+          const pendingEmail = getInitialPendingEmail();
+          if (pendingEmail && typeof window !== 'undefined' && window.location.pathname.startsWith('/verify-email')) {
+            dispatch({ type: 'SET_PENDING_VERIFICATION', email: pendingEmail });
+          } else {
+            dispatch({ type: 'LOGOUT' });
+          }
         }
       } catch {
         if (isMounted) {
@@ -196,6 +228,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         resetPassword,
         logout,
         clearError,
+        setUser,
+        setPendingVerification,
       }}
     >
       {children}
@@ -208,3 +242,4 @@ export function useAuth() {
   if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }
+

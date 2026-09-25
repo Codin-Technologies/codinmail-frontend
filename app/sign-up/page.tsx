@@ -65,13 +65,16 @@ export default function SignUpPage() {
     if (!validate()) return;
     setIsSubmitting(true);
     try {
-      await register({
+      const result = await register({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         displayName: displayName.trim(),
         email: email.trim(),
         password,
       });
+      if (result?.error === 'VERIFICATION_REQUIRED' || (result?.success && !result?.user)) {
+        router.replace('/verify-email');
+      }
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {
